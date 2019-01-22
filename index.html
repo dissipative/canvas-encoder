@@ -1,0 +1,80 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>iOS canvas test</title>
+</head>
+
+<body>
+  <script>
+  </script>
+  <div id="container">
+    <div class="col">
+      <h1 class="center">Image upload test</h1>
+
+      <div class="row mt-3">
+        <div class="col">
+          <input type="file" id="file-input" accept="image/*" class="d-none">
+          <button type="button" class="btn btn-primary" id="file-input-button" onclick="page.click('#file-input')">Add
+            photo</button>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <h3>Source image</h3>
+          <table class="table">
+            <tbody>
+              <tr>
+                <td>Binary size</td>
+                <td class="img-src-size-bin">0</td>
+              </tr>
+              <tr>
+                <td>Base64 size</td>
+                <td class="img-src-size-base64">0</td>
+              </tr>
+              <tr>
+                <td>Format</td>
+                <td class="img-src-format"></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="text-left">
+            <img src="" alt="" class="img-thumbnail img-src">
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <h2>Encoded image</h2>
+          <table class="table">
+            <tbody>
+              <tr>
+                <td>Binary size</td>
+                <td class="img-enc-size-bin">0</td>
+              </tr>
+              <tr>
+                <td>Base64 size</td>
+                <td class="img-enc-size-base64">0</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="text-left">
+            <img src="" alt="" class="img-thumbnail img-enc">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</body>
+<script src="utils.js"></script>
+<script src="init.js"></script>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS"
+crossorigin="anonymous">
+
+</html>
