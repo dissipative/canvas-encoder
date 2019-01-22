@@ -16,9 +16,10 @@
 
       <div class="row mt-3">
         <div class="col">
-          <input type="file" id="file-input" accept="image/*" class="d-none">
-          <button type="button" class="btn btn-primary" id="file-input-button" onclick="page.click('#file-input')">Add
-            photo</button>
+          <input type="file" id="file-input" accept="image/*" class="d-none" onchange="page.fileChange(this.files[0])">
+          <button type="button" class="btn btn-primary" id="file-input-button" onclick="page.click('#file-input')">
+            Add photo
+          </button>
         </div>
       </div>
 
@@ -72,9 +73,10 @@
 
   </div>
 </body>
-<script src="utils.js"></script>
-<script src="init.js"></script>
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS"
-crossorigin="anonymous">
+<script src="page.js"></script>
+<link rel="stylesheet" 
+  href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" 
+  integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS"
+  crossorigin="anonymous">
 
 </html>
