@@ -6,7 +6,10 @@ function Page() {
   var imgSourceSizeBase64Cell = document.querySelector('.img-src-size-base64');
   var imgEncodedSizeBase64Cell = document.querySelector('.img-enc-size-base64');
   var imgSourceFormatCell = document.querySelector('.img-src-format');
-  
+  var imgSourceOrientationCell = document.querySelector('.img-src-orientation');
+  var imgSourceModelCell = document.querySelector('.img-src-model');
+
+
   this.compressImage = function (sourceImgSelector, quality, outputFormat) {
     var mimeType;
     if (outputFormat === "png") {
@@ -18,6 +21,7 @@ function Page() {
     }
 
     var canvas = document.createElement('canvas');
+
 
     canvas.width = sourceImgSelector.naturalWidth;
     canvas.height = sourceImgSelector.naturalHeight;
@@ -36,50 +40,61 @@ function Page() {
   };
 
   this.sizeToReadable = function (size) {
-    return Math.round((size / 1024 / 1024)*100)/100 + " Mb" || 0;
+    return Math.round((size / 1024 / 1024) * 100) / 100 + " Mb" || 0;
   }
-  
-  this.checkImage = function(img, callback) {
+
+  this.checkImage = function (img, callback) {
     if (!img.naturalWidth) {
       setTimeout(this.checkImage.bind(this), 200, img, callback.bind(this));
       return;
     }
-    if (typeof callback ==='function') {
+    if (typeof callback === 'function') {
       return callback();
     }
-  }
+  };
+
+  this.addMeta = function(file) {
+    EXIF.getData(file, function () {
+      var allMetaData = EXIF.getAllTags(this);
+      imgSourceOrientationCell.textContent = allMetaData.Orientation || 'none';
+      imgSourceModelCell.textContent = allMetaData.Model || 'none';
+    });
+  };
 
   this.fileChange = function (file) {
+    if (!file) {
+      return;
+    }
     var reader = new FileReader;
     imgSource.src = imgEncoded.src = imgSourceFormatCell.textContent = '';
     imgSourceSizeBinCell.textContent = imgSourceSizeBase64Cell.textContent = 0;
     imgEncodedSizeBinCell.textContent = imgEncodedSizeBase64Cell.textContent = 0;
-  
+    imgSourceOrientationCell.textContent = imgSourceModelCell.textContent = 'none';
+
     reader.onload = function (e) {
       imgSource.src = e.target.result;
-  
+      this.addMeta(file);
       imgSourceSizeBinCell.textContent = this.sizeToReadable(file.size);
       imgSourceSizeBase64Cell.textContent = this.sizeToReadable(imgSource.src.length);
       imgSourceFormatCell.textContent = file.type;
     }.bind(this);
-  
+
     reader.onloadend = function () {
       if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
         return;
       }
 
-      this.checkImage(imgSource, function (){
+      this.checkImage(imgSource, function () {
         var compressedImage = this.compressImage(imgSource, 50);
         imgEncoded.src = compressedImage.src;
         var encodedSize = imgEncoded.src.length;
         imgEncodedSizeBase64Cell.textContent = this.sizeToReadable(encodedSize);
-        imgEncodedSizeBinCell.textContent = this.sizeToReadable(encodedSize/4*3);  
+        imgEncodedSizeBinCell.textContent = this.sizeToReadable(encodedSize / 4 * 3);
       }.bind(this));
     }.bind(this);
-    
-    reader.readAsDataURL(file);
-  }
 
+    reader.readAsDataURL(file);
+  };
 
 };
 
