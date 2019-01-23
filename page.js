@@ -8,9 +8,11 @@ function Page() {
   var imgSourceFormatCell = document.querySelector('.img-src-format');
   var imgSourceOrientationCell = document.querySelector('.img-src-orientation');
   var imgSourceModelCell = document.querySelector('.img-src-model');
+  var gotExif = false;
+  var orientation;
 
 
-  this.compressImage = function (sourceImgSelector, quality, outputFormat) {
+  this.compressImage = function (sourceImgSelector, quality, outputFormat, orientation) {
     var mimeType;
     if (outputFormat === "png") {
       mimeType = "image/png";
@@ -21,18 +23,56 @@ function Page() {
     }
 
     var canvas = document.createElement('canvas');
+    var width = sourceImgSelector.naturalWidth;
+    var height = sourceImgSelector.naturalHeight;
 
+    // fix canvas for portrait mode
+    if (~[5, 6, 7, 8].indexOf(orientation)) {
+      canvas.width = height;
+      canvas.height = width;
+    } else {
+      canvas.width = width;
+      canvas.height = height;
+    }
 
-    canvas.width = sourceImgSelector.naturalWidth;
-    canvas.height = sourceImgSelector.naturalHeight;
-    console.log(sourceImgSelector.naturalWidth, canvas.width)
     var context = canvas.getContext("2d");
+    context = this.fixContextOrientation(orientation, context, width, height);
     context.drawImage(sourceImgSelector, 0, 0);
+
     var newImageData = context.canvas.toDataURL(mimeType, quality);
     var resultImageSelector = new Image();
     resultImageSelector.src = newImageData;
-    console.log('image compressd')
+
     return resultImageSelector;
+  };
+
+  this.fixContextOrientation = function(exifOrientation, context, width, height) {
+    switch (exifOrientation) {
+      case 2:
+        context.transform(-1, 0, 0, 1, width, 0);
+        break;
+      case 3:
+        context.transform(-1, 0, 0, -1, width, height);
+        break;
+      case 4:
+        context.transform(1, 0, 0, -1, 0, height);
+        break;
+      case 5:
+        context.transform(0, 1, 1, 0, 0, 0);
+        break;
+      case 6:
+        context.transform(0, 1, -1, 0, height, 0);
+        break;
+      case 7:
+        context.transform(0, -1, -1, 0, height, width);
+        break;
+      case 8:
+        context.transform(0, -1, 1, 0, 0, width);
+        break;
+      default:
+        context.transform(1, 0, 0, 1, 0, 0);
+    }
+    return context;
   };
 
   this.click = function (selector) {
@@ -43,9 +83,9 @@ function Page() {
     return Math.round((size / 1024 / 1024) * 100) / 100 + " Mb" || 0;
   }
 
-  this.checkImage = function (img, callback) {
-    if (!img.naturalWidth) {
-      setTimeout(this.checkImage.bind(this), 200, img, callback.bind(this));
+  this.gotImageLoaded = function (img, callback) {
+    if (!img.naturalWidth || !gotExif) {
+      setTimeout(this.gotImageLoaded.bind(this), 200, img, callback.bind(this));
       return;
     }
     if (typeof callback === 'function') {
@@ -53,11 +93,13 @@ function Page() {
     }
   };
 
-  this.addMeta = function(file) {
+  this.addMeta = function (file) {
     EXIF.getData(file, function () {
       var allMetaData = EXIF.getAllTags(this);
       imgSourceOrientationCell.textContent = allMetaData.Orientation || 'none';
       imgSourceModelCell.textContent = allMetaData.Model || 'none';
+      gotExif = true;
+      orientation = allMetaData.Orientation;
     });
   };
 
@@ -66,6 +108,9 @@ function Page() {
       return;
     }
     var reader = new FileReader;
+    gotExif = false;
+    orientation = null;
+    this.addMeta(file);
     imgSource.src = imgEncoded.src = imgSourceFormatCell.textContent = '';
     imgSourceSizeBinCell.textContent = imgSourceSizeBase64Cell.textContent = 0;
     imgEncodedSizeBinCell.textContent = imgEncodedSizeBase64Cell.textContent = 0;
@@ -73,7 +118,6 @@ function Page() {
 
     reader.onload = function (e) {
       imgSource.src = e.target.result;
-      this.addMeta(file);
       imgSourceSizeBinCell.textContent = this.sizeToReadable(file.size);
       imgSourceSizeBase64Cell.textContent = this.sizeToReadable(imgSource.src.length);
       imgSourceFormatCell.textContent = file.type;
@@ -84,8 +128,8 @@ function Page() {
         return;
       }
 
-      this.checkImage(imgSource, function () {
-        var compressedImage = this.compressImage(imgSource, 50);
+      this.gotImageLoaded(imgSource, function () {
+        var compressedImage = this.compressImage(imgSource, 50, file.type, orientation);
         imgEncoded.src = compressedImage.src;
         var encodedSize = imgEncoded.src.length;
         imgEncodedSizeBase64Cell.textContent = this.sizeToReadable(encodedSize);
