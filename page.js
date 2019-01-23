@@ -10,7 +10,7 @@ function Page() {
   var imgSourceModelCell = document.querySelector('.img-src-model');
   var gotExif = false;
   var orientation;
-
+  var iOS = !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
 
   this.compressImage = function (sourceImgSelector, quality, outputFormat, orientation) {
     var mimeType;
@@ -27,7 +27,7 @@ function Page() {
     var height = sourceImgSelector.naturalHeight;
 
     // fix canvas for portrait mode
-    if (~[5, 6, 7, 8].indexOf(orientation)) {
+    if (~[5, 6, 7, 8].indexOf(orientation) && !iOS) {
       canvas.width = height;
       canvas.height = width;
     } else {
@@ -46,7 +46,17 @@ function Page() {
     return resultImageSelector;
   };
 
-  this.fixContextOrientation = function(exifOrientation, context, width, height) {
+  this.fixContextOrientation = function (exifOrientation, context, width, height) {
+    if (iOS) {
+      switch (exifOrientation) {
+        case 6:
+          context.transform(0, 1, -1, 0, width, 0);
+          break;
+        default:
+          context.transform(1, 0, 0, 1, 0, 0);
+      }
+      return context;
+    }
     switch (exifOrientation) {
       case 2:
         context.transform(-1, 0, 0, 1, width, 0);
@@ -96,6 +106,7 @@ function Page() {
   this.addMeta = function (file) {
     EXIF.getData(file, function () {
       var allMetaData = EXIF.getAllTags(this);
+      console.log(allMetaData);
       imgSourceOrientationCell.textContent = allMetaData.Orientation || 'none';
       imgSourceModelCell.textContent = allMetaData.Model || 'none';
       gotExif = true;
