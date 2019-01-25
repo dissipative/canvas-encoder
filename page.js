@@ -16,8 +16,7 @@ function Page() {
       return;
     }
 
-    deleteExif(file, function (result) {
-      file = result;
+    deleteExif(file, function (resultFile) {
       var reader = new FileReader;
       imgSource.src = imgEncoded.src = imgSourceFormatCell.textContent = '';
       imgSourceSizeBinCell.textContent = imgSourceSizeBase64Cell.textContent = 0;
@@ -25,16 +24,16 @@ function Page() {
 
       reader.onloadend = function (e) {
         imgSource.src = e.target.result;
-        imgSourceSizeBinCell.textContent = sizeToReadable(file.size);
+        imgSourceSizeBinCell.textContent = sizeToReadable(resultFile.size);
         imgSourceSizeBase64Cell.textContent = sizeToReadable(imgSource.src.length);
-        imgSourceFormatCell.textContent = file.type;
+        imgSourceFormatCell.textContent = resultFile.type;
 
-        if (file.type !== 'image/jpeg' && file.type !== 'image/png' && file.type !== 'image/webp') {
+        if (resultFile.type !== 'image/jpeg' && resultFile.type !== 'image/png' && resultFile.type !== 'image/webp') {
           return;
         }
 
         gotImageLoaded(imgSource, function () {
-          imgEncoded.src = compressImage(imgSource, 0.5, file.type);
+          imgEncoded.src = compressImage(imgSource, 0.5, resultFile.type);
 
           var encodedSize = imgEncoded.src.length;
           imgEncodedSizeBase64Cell.textContent = sizeToReadable(encodedSize);
@@ -43,7 +42,7 @@ function Page() {
 
       }.bind(this);
 
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(resultFile);
 
     }.bind(this));
 
@@ -82,7 +81,6 @@ function Page() {
           offset += 2;
         }
         if (pieces.length > 0) {
-          console.log('pieces are ok!');
           var newPieces = [];
           pieces.forEach(function (v) {
             newPieces.push(this.result.slice(v.recess, v.offset));
