@@ -54,8 +54,7 @@ function Page() {
 
     reader.onload = function () {
       if (file.type !== 'image/jpeg') {
-        console.log('non-jpeg!');
-        callback(file);
+        return callback(file);
       }
 
       var dv = new DataView(this.result);
@@ -64,7 +63,6 @@ function Page() {
       var pieces = [];
       var i = 0;
       if (dv.getUint16(offset) == 0xffd8) {
-        console.log('exif?')
         offset += 2;
         var app1 = dv.getUint16(offset);
         offset += 2;
@@ -83,7 +81,6 @@ function Page() {
           var app1 = dv.getUint16(offset);
           offset += 2;
         }
-        console.log(app1, offset, pieces);
         if (pieces.length > 0) {
           console.log('pieces are ok!');
           var newPieces = [];
@@ -94,14 +91,12 @@ function Page() {
           var resultImage = new Blob(newPieces, {
             type: 'image/jpeg'
           });
-          callback(resultImage);
+          return callback(resultImage);
         } else {
-          console.log('pieces are empty!');
-          callback(file);
+          return callback(file);
         }
       } else {
-        console.log('not exif?');
-        callback(file);
+        return callback(file);
       }
 
     };
