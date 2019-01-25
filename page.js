@@ -6,149 +6,132 @@ function Page() {
   var imgSourceSizeBase64Cell = document.querySelector('.img-src-size-base64');
   var imgEncodedSizeBase64Cell = document.querySelector('.img-enc-size-base64');
   var imgSourceFormatCell = document.querySelector('.img-src-format');
-  var imgSourceOrientationCell = document.querySelector('.img-src-orientation');
-  var imgSourceModelCell = document.querySelector('.img-src-model');
-  var gotExif = false;
-  var orientation;
-  var iOS = !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
-
-  this.compressImage = function (sourceImgSelector, quality, outputFormat, orientation) {
-    var mimeType;
-    if (outputFormat === "png") {
-      mimeType = "image/png";
-    } else if (outputFormat === "webp") {
-      mimeType = "image/webp";
-    } else {
-      mimeType = "image/jpeg";
-    }
-
-    var canvas = document.createElement('canvas');
-    var width = sourceImgSelector.naturalWidth;
-    var height = sourceImgSelector.naturalHeight;
-
-    // fix canvas for portrait mode
-    if (~[5, 6, 7, 8].indexOf(orientation) && !iOS) {
-      canvas.width = height;
-      canvas.height = width;
-    } else {
-      canvas.width = width;
-      canvas.height = height;
-    }
-
-    var context = canvas.getContext("2d");
-    context = this.fixContextOrientation(orientation, context, width, height);
-    context.drawImage(sourceImgSelector, 0, 0);
-
-    var newImageData = context.canvas.toDataURL(mimeType, quality);
-    var resultImageSelector = new Image();
-    resultImageSelector.src = newImageData;
-
-    return resultImageSelector;
-  };
-
-  this.fixContextOrientation = function (exifOrientation, context, width, height) {
-    if (iOS) {
-      switch (exifOrientation) {
-        case 6:
-          context.transform(0, 1, -1, 0, width, 0);
-          break;
-        default:
-          context.transform(1, 0, 0, 1, 0, 0);
-      }
-      return context;
-    }
-    switch (exifOrientation) {
-      case 2:
-        context.transform(-1, 0, 0, 1, width, 0);
-        break;
-      case 3:
-        context.transform(-1, 0, 0, -1, width, height);
-        break;
-      case 4:
-        context.transform(1, 0, 0, -1, 0, height);
-        break;
-      case 5:
-        context.transform(0, 1, 1, 0, 0, 0);
-        break;
-      case 6:
-        context.transform(0, 1, -1, 0, height, 0);
-        break;
-      case 7:
-        context.transform(0, -1, -1, 0, height, width);
-        break;
-      case 8:
-        context.transform(0, -1, 1, 0, 0, width);
-        break;
-      default:
-        context.transform(1, 0, 0, 1, 0, 0);
-    }
-    return context;
-  };
 
   this.click = function (selector) {
     document.querySelector(selector).click();
-  };
-
-  this.sizeToReadable = function (size) {
-    return Math.round((size / 1024 / 1024) * 100) / 100 + " Mb" || 0;
-  }
-
-  this.gotImageLoaded = function (img, callback) {
-    if (!img.naturalWidth || !gotExif) {
-      setTimeout(this.gotImageLoaded.bind(this), 200, img, callback.bind(this));
-      return;
-    }
-    if (typeof callback === 'function') {
-      return callback();
-    }
-  };
-
-  this.addMeta = function (file) {
-    EXIF.getData(file, function () {
-      var allMetaData = EXIF.getAllTags(this);
-      console.log(allMetaData);
-      imgSourceOrientationCell.textContent = allMetaData.Orientation || 'none';
-      imgSourceModelCell.textContent = allMetaData.Model || 'none';
-      gotExif = true;
-      orientation = allMetaData.Orientation;
-    });
   };
 
   this.fileChange = function (file) {
     if (!file) {
       return;
     }
-    var reader = new FileReader;
-    gotExif = false;
-    orientation = null;
-    this.addMeta(file);
-    imgSource.src = imgEncoded.src = imgSourceFormatCell.textContent = '';
-    imgSourceSizeBinCell.textContent = imgSourceSizeBase64Cell.textContent = 0;
-    imgEncodedSizeBinCell.textContent = imgEncodedSizeBase64Cell.textContent = 0;
-    imgSourceOrientationCell.textContent = imgSourceModelCell.textContent = 'none';
 
-    reader.onload = function (e) {
-      imgSource.src = e.target.result;
-      imgSourceSizeBinCell.textContent = this.sizeToReadable(file.size);
-      imgSourceSizeBase64Cell.textContent = this.sizeToReadable(imgSource.src.length);
-      imgSourceFormatCell.textContent = file.type;
-    }.bind(this);
+    deleteExif(file, function (result) {
+      file = result;
+      var reader = new FileReader;
+      imgSource.src = imgEncoded.src = imgSourceFormatCell.textContent = '';
+      imgSourceSizeBinCell.textContent = imgSourceSizeBase64Cell.textContent = 0;
+      imgEncodedSizeBinCell.textContent = imgEncodedSizeBase64Cell.textContent = 0;
 
-    reader.onloadend = function () {
-      if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-        return;
+      reader.onloadend = function (e) {
+        imgSource.src = e.target.result;
+        imgSourceSizeBinCell.textContent = sizeToReadable(file.size);
+        imgSourceSizeBase64Cell.textContent = sizeToReadable(imgSource.src.length);
+        imgSourceFormatCell.textContent = file.type;
+
+        if (file.type !== 'image/jpeg' && file.type !== 'image/png' && file.type !== 'image/webp') {
+          return;
+        }
+
+        gotImageLoaded(imgSource, function () {
+          imgEncoded.src = compressImage(imgSource, 0.5, file.type);
+
+          var encodedSize = imgEncoded.src.length;
+          imgEncodedSizeBase64Cell.textContent = sizeToReadable(encodedSize);
+          imgEncodedSizeBinCell.textContent = sizeToReadable(encodedSize / 4 * 3);
+        }.bind(this));
+
+      }.bind(this);
+
+      reader.readAsDataURL(file);
+
+    }.bind(this));
+
+  };
+
+  function deleteExif(file, callback) {
+    var reader = new FileReader();
+
+    reader.onload = function () {
+      if (file.type !== 'image/jpeg') {
+        console.log('non-jpeg!');
+        callback(file);
       }
 
-      this.gotImageLoaded(imgSource, function () {
-        var compressedImage = this.compressImage(imgSource, 50, file.type, orientation);
-        imgEncoded.src = compressedImage.src;
-        var encodedSize = imgEncoded.src.length;
-        imgEncodedSizeBase64Cell.textContent = this.sizeToReadable(encodedSize);
-        imgEncodedSizeBinCell.textContent = this.sizeToReadable(encodedSize / 4 * 3);
-      }.bind(this));
-    }.bind(this);
+      var dv = new DataView(this.result);
+      var offset = 0,
+        recess = 0;
+      var pieces = [];
+      var i = 0;
+      if (dv.getUint16(offset) == 0xffd8) {
+        console.log('exif?')
+        offset += 2;
+        var app1 = dv.getUint16(offset);
+        offset += 2;
+        while (offset < dv.byteLength) {
+          if (app1 == 0xffe1) {
+            pieces[i] = {
+              recess: recess,
+              offset: offset - 2
+            };
+            recess = offset + dv.getUint16(offset);
+            i++;
+          } else if (app1 == 0xffda) {
+            break;
+          }
+          offset += dv.getUint16(offset);
+          var app1 = dv.getUint16(offset);
+          offset += 2;
+        }
+        console.log(app1, offset, pieces);
+        if (pieces.length > 0) {
+          console.log('pieces are ok!');
+          var newPieces = [];
+          pieces.forEach(function (v) {
+            newPieces.push(this.result.slice(v.recess, v.offset));
+          }, this);
+          newPieces.push(this.result.slice(recess));
+          var resultImage = new Blob(newPieces, {
+            type: 'image/jpeg'
+          });
+          callback(resultImage);
+        } else {
+          console.log('pieces are empty!');
+          callback(file);
+        }
+      } else {
+        console.log('not exif?');
+        callback(file);
+      }
 
-    reader.readAsDataURL(file);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function compressImage(sourceImgSelector, quality, mimeType) {
+    var canvas = document.createElement('canvas');
+    canvas.width = sourceImgSelector.naturalWidth;
+    canvas.height = sourceImgSelector.naturalHeight;
+
+    var context = canvas.getContext("2d");
+    context.drawImage(sourceImgSelector, 0, 0);
+
+    var newImageData = context.canvas.toDataURL(mimeType, quality);
+    return newImageData;
+  };
+
+  function sizeToReadable(size) {
+    return Math.round((size / 1024 / 1024) * 100) / 100 + " Mb" || 0;
+  }
+
+  function gotImageLoaded(img, callback) {
+    if (!img.naturalWidth) {
+      setTimeout(gotImageLoaded.bind(this), 200, img, callback.bind(this));
+      return;
+    }
+    if (typeof callback === 'function') {
+      return callback();
+    }
   };
 
 };
